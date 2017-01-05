@@ -8,8 +8,20 @@ enum GradientError:Error {
 
 public class Gradient {
 
+    static let count = 255
+    
+    struct Elemnt {
+        let color:Color
+        let position:Int
+        
+        init(color: Color, position: Float) {
+            self.color = color
+            self.position = Int(position * Float(count))
+        }
+    }
+    
     let colors:[Color]
-    let count = 255
+
     
     init( _ elements:(Color, Float)...) throws {
         
@@ -28,52 +40,55 @@ public class Gradient {
          A(n) = B - (B - A) * d(A(n))
          
         */
-    
+        
         var colors:[Color] = []
         
+        let pairs = elements.map{Elemnt(color:$0.0, position:$0.1)}.pairs()
         
-        guard let elemnt = elements.first else {
+        guard var pair = pairs.first else {
             throw GradientError.Empty
         }
         
-        var colorA:Color = elemnt.0
-        var colorNext:Color?
+        var colorA:Color = pair.0.color
+        var colorB:Color = pair.1.color
         
         
-        var positionA:Int = Int(elemnt.1 * Float(count))
-        var positionNext:Int?
+        var positionA:Int = pair.0.position
+        var positionB:Int = pair.1.position
     
         var elementIndex = 1
-        
-        for position in 0...count {
+        var lastElement = false
+        for position in 0...Gradient.count {
             
             if positionA >= position {
                 colors.append(colorA)
                 continue
             }
             
-            
-            if colorNext == nil {
-                if elementIndex < elements.count {
-                    let element = elements[elementIndex]
+            if positionB < position && !lastElement {
+                if elementIndex < pairs.count {
+                    pair = pairs[elementIndex]
                     elementIndex += 1
-                    colorNext = element.0
-                    positionNext = Int(element.1 * Float(count))
+
+                    colorA = pair.0.color
+                    colorB = pair.1.color
+
+                    positionA = pair.0.position
+                    positionB = pair.1.position
+                } else {
+                    lastElement = true
                 }
             }
 
-            guard let colorB = colorNext, let positionB = positionNext else {
-                throw GradientError.WrongElementPosition
-            }
-            
-            if position >= positionB {
+                    
+            if lastElement {
                 colors.append(colorB)
                 continue
             }
             
             let gradientLength = positionB - positionA
             let d = Double(position - positionA) / Double(gradientLength)
-            let color = colorB - (colorB - colorA) * d
+            let color = colorA * (1.0 - d ) + colorB * d
             colors.append(color)
         }
         
@@ -82,6 +97,44 @@ public class Gradient {
     }
 }
 
+extension Image {
+    func applay(gradient:Gradient) {
+        desaturate()
+        let s = size
+        for x in 0..<s.width {
+            for y in 0..<s.height  {
+                let point = Point(x: x, y: y)
+                let color = get(pixel: point)
+                var positon = Int((1 - color.redComponent) * Double(Gradient.count))
+                if positon > Gradient.count {
+                    positon = Gradient.count
+                }
+                if positon < 0 {
+                    positon = 0
+                }
+                let newColor = gradient.colors[positon]
+                set(pixel: point, to: newColor)
+            }
+        }
+    }
+}
+
+extension Gradient {
+    func image() -> Image? {
+        guard let image = Image(width: 256, height: 50) else {
+            return nil
+        }
+        
+        for x in 0...Gradient.count {
+            let color = colors[x]
+            for y in 0..<50 {
+                let point = Point(x: x, y: y)
+                image.set(pixel: point, to: color)
+            }
+        }
+        return image
+    }
+}
 
 extension Color:Equatable {
     public static func == (lhs: Color, rhs: Color) -> Bool {
@@ -115,6 +168,15 @@ extension Color:Equatable {
         return Color(red: red, green: green, blue: blue, alpha: alpha)
     }
     
+    public static func + (lhs: Color, rhs: Color) -> Color {
+        let alpha = fabs(lhs.alphaComponent + rhs.alphaComponent)
+        let red = fabs(lhs.redComponent + rhs.redComponent)
+        let green = fabs(lhs.greenComponent + rhs.greenComponent)
+        let blue = fabs(lhs.blueComponent  + rhs.blueComponent)
+        return Color(red: red, green: green, blue: blue, alpha: alpha)
+    }
+    
+    
     public static func * (lhs: Color, rhs: Double) -> Color {
         let alpha = oneOrLess(fabs(lhs.alphaComponent * rhs))
         let red = oneOrLess(fabs(lhs.redComponent * rhs))
@@ -133,3 +195,39 @@ extension Color:Equatable {
         return value
     }
 }
+
+extension Array {
+
+    public func pairs() -> [(Element, Element)]{
+        
+        guard count != 0 else {
+            return []
+        }
+        
+        var pairs:[(Element, Element)] = []
+        
+        var iterator = makeIterator()
+        
+        guard var beging = iterator.next() else {
+            return []
+        }
+        
+        guard count > 1 else {
+            return [(beging, beging)]
+        }
+
+        
+        while let end = iterator.next() {
+            pairs.append((beging, end))
+            beging = end
+        }
+        return pairs
+    }
+}
+
+extension Color: CustomStringConvertible {
+    public var description: String {
+        return "(r:\(redComponent), g:\(greenComponent), b:\(blueComponent))"
+    }
+}
+
