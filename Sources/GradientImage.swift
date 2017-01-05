@@ -23,7 +23,7 @@ public class Gradient {
     let colors:[Color]
 
     
-    init( _ elements:(Color, Float)...) throws {
+    public init( _ elements:(Color, Float)...) throws {
         
         /*
  
@@ -36,8 +36,9 @@ public class Gradient {
          gradientLength = p(B) - p(A)
          d(A1) = (p(A1) - p(A)) / gradientLength
          
-         A1 = B - (B - A) * d(A1)
-         A(n) = B - (B - A) * d(A(n))
+         A1   = A * (1.0 - d(A1))   + B * d(A1)
+         A(n) = A * (1.0 - d(A(n))) + B * d(A(n))
+
          
         */
         
@@ -98,23 +99,17 @@ public class Gradient {
 }
 
 extension Image {
-    func applay(gradient:Gradient) {
+    public func applay(gradient:Gradient) {
         desaturate()
-        let s = size
-        for x in 0..<s.width {
-            for y in 0..<s.height  {
-                let point = Point(x: x, y: y)
-                let color = get(pixel: point)
-                var positon = Int((1 - color.redComponent) * Double(Gradient.count))
-                if positon > Gradient.count {
-                    positon = Gradient.count
-                }
-                if positon < 0 {
-                    positon = 0
-                }
-                let newColor = gradient.colors[positon]
-                set(pixel: point, to: newColor)
+        morph { x, y, color -> Color in
+            var positon = Int((1 - color.redComponent) * Double(Gradient.count))
+            if positon > Gradient.count {
+                positon = Gradient.count
             }
+            if positon < 0 {
+                positon = 0
+            }
+            return gradient.colors[positon]
         }
     }
 }
