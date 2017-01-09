@@ -102,13 +102,7 @@ extension Image {
     public func applay(gradient:Gradient) {
         desaturate()
         morph { x, y, color -> Color in
-            var positon = Int((1 - color.redComponent) * Double(Gradient.count))
-            if positon > Gradient.count {
-                positon = Gradient.count
-            }
-            if positon < 0 {
-                positon = 0
-            }
+            let positon = Int(fabs(1 - color.redComponent) * Double(Gradient.count)) & 0xFF
             return gradient.colors[positon]
         }
     }
