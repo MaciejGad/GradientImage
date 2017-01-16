@@ -22,8 +22,11 @@ public class Gradient {
     
     let colors:[Color]
 
-    
-    public init( _ elements:(Color, Float)...) throws {
+    public convenience init( _ elements:(Color, Float)...) throws {
+        try self.init(elements:elements)
+    }
+
+    public init(elements:[(Color, Float)]) throws {
         
         /*
  
